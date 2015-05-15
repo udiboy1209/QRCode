@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -23,14 +24,20 @@ import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.qrcode.QRCodeReader;
 
+import java.util.List;
+
 
 public class MainActivity extends ActionBarActivity {
 
+
     QRCodeReader reader;
+    int[] pixels ;
 
     private Camera mCamera;
+    private Camera.Size mSize;
     private CameraPreview mPreview;
     private Camera.PictureCallback mPicture;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +45,27 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         mCamera = getCameraInstance();
+
+        Camera.Parameters parameters = mCamera.getParameters();
+        List<Camera.Size> sizes = parameters.getSupportedPictureSizes();
+
+        for(Camera.Size size :sizes){
+            mSize=size;
+
+            Log.d("CameraSize" , size.width+"x"+size.height);
+
+            if(size.width<800)
+                break;
+        }
+
+        if(mSize==null){
+            mSize=sizes.get(sizes.size()-1);
+        }
+
+        parameters.setPictureSize(mSize.width,mSize.height);
+        pixels=new int[mSize.width*mSize.height];
+
+        mCamera.setParameters(parameters);
 
         // Create our Preview view and set it as the content of our activity.
         mPreview = new CameraPreview(this, mCamera);
@@ -50,11 +78,14 @@ public class MainActivity extends ActionBarActivity {
             @Override
             public void onPictureTaken(byte[] data, final Camera camera) {
                 Bitmap img = BitmapFactory.decodeByteArray(data,0,data.length);
-                int[] pixelData = new int[img.getWidth()*img.getHeight()];
-                img.getPixels(pixelData,0,img.getWidth(),0,0,img.getWidth(),img.getHeight());
+                /*int[] pixelData = new int[img.getWidth()*img.getHeight()];
+                img.getPixels(pixelData,0,img.getWidth(),0,0,img.getWidth(),img.getHeight());*/
 
-                LuminanceSource luminImg = new RGBLuminanceSource(img.getWidth(),img.getHeight(),pixelData);
+                data = null;
 
+                img.getPixels(pixels,0,mSize.width,0,0,mSize.width,mSize.height);
+
+                LuminanceSource luminImg = new RGBLuminanceSource( img.getWidth(), img.getHeight(),pixels);
                 BinaryBitmap binImg = new BinaryBitmap(new HybridBinarizer(luminImg));
 
                 try {
